@@ -58,11 +58,11 @@ func GetAllCountries(c *gin.Context) {
 
 // GetCountryCapital は特定の国の首都を取得します
 func GetCountryCapital(c *gin.Context) {
-	countryName := c.Param("id") // URLパラメータはそのままにしていますが、実際にはnameで検索します
+	countryName := c.Param("id")
 
 	tx, err := database.GetClient().Begin()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "データベース接続エラー: " + err.Error()})
 		return
 	}
 	defer func() {
@@ -71,47 +71,39 @@ func GetCountryCapital(c *gin.Context) {
 		}
 	}()
 
-	cursor, err := tx.ExecCypher(3, `
-		MATCH (c:Country)-[r:HAS_CAPITAL]->(cap:Capital)
-		WHERE c.name = $1
-		RETURN c, cap
+	// クエリを修正: パラメータの渡し方を改善し、より具体的な条件を設定
+	cursor, err := tx.ExecCypher(2, `
+		MATCH (c:Country {name: %s})-[:HAS_CAPITAL]->(cap:Capital)
+		RETURN c.name as country, cap.name as capital
 	`, countryName)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "クエリ実行エラー: " + err.Error()})
 		return
 	}
 
 	if !cursor.Next() {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Country not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "指定された国または首都が見つかりません: " + countryName})
 		return
 	}
 
 	row, err := cursor.GetRow()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "データ取得エラー: " + err.Error()})
 		return
 	}
 
-	country := row[0].(*age.Vertex)
-	capital := row[1].(*age.Vertex)
-
-	countryProps := country.Props()
-	capitalProps := capital.Props()
-
-	countryName = countryProps["name"].(string)
-	capitalName := capitalProps["name"].(string)
-
+	// 結果の構造を単純化
 	relation := models.CountryCapitalRelation{
 		Country: models.Country{
-			Name: countryName,
+			Name: row[0].String(),
 		},
 		Capital: models.Capital{
-			Name: capitalName,
+			Name: row[1].String(),
 		},
 	}
 
 	if err = tx.Commit(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "コミットエラー: " + err.Error()})
 		return
 	}
 
