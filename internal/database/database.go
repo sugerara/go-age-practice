@@ -95,11 +95,8 @@ func GetCountryCapitals() ([]models.CountryCapitalRelation, error) {
 		log.Printf("Debug - row[0] type: %T, value: %v", row[0], row[0])
 		log.Printf("Debug - row[1] type: %T, value: %v", row[1], row[1])
 
-		country := row[0].(*age.Vertex)
-		capital := row[1].(*age.Vertex)
-
-		countryName := country.Prop("name").(string)
-		capitalName := capital.Prop("name").(string)
+		countryName := row[0].(*age.SimpleEntity).AsStr()
+		capitalName := row[1].(*age.SimpleEntity).AsStr()
 
 		log.Printf("取得したデータ: 国=%s, 首都=%s", countryName, capitalName)
 
