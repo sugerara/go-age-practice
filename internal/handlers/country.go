@@ -73,7 +73,7 @@ func GetCountryCapital(c *gin.Context) {
 
 	// クエリを修正: パラメータの渡し方を改善し、より具体的な条件を設定
 	cursor, err := tx.ExecCypher(2, `
-		MATCH (c:Country {name: %s})-[:HAS_CAPITAL]->(cap:Capital)
+		MATCH (c:Country {name: '%s'})-[:HAS_CAPITAL]->(cap:Capital)
 		RETURN c.name as country, cap.name as capital
 	`, countryName)
 	if err != nil {
